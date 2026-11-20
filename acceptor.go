@@ -367,12 +367,20 @@ func (a *Acceptor) handleConnection(netConn net.Conn) {
 		return
 	}
 
+	// Armed before anything is sent (writeLoop has not started): a write timeout can close the
+	// connection at any point after.
+	if session.SocketLingerZeroOnClose {
+		if err := setLingerZero(netConn); err != nil {
+			a.globalLog.OnEventf("Failed to set linger on session %v connection: %v", sessID, err)
+		}
+	}
+
 	go func() {
 		msgIn <- fixIn{msgBytes, parser.lastRead}
 		readLoop(parser, msgIn, a.globalLog)
 	}()
 
-	writeLoop(netConn, msgOut, a.globalLog)
+	writeLoop(connWriter(netConn, session.SocketWriteTimeout, a.globalLog), msgOut, a.globalLog)
 }
 
 func (a *Acceptor) dynamicSessionsLoop() {

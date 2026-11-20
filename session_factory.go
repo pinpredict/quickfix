@@ -452,6 +452,29 @@ func (f sessionFactory) newSession(
 		s.InChanCapacity = 1
 	}
 
+	if settings.HasSetting(config.SocketWriteTimeout) {
+		var timeout time.Duration
+		if timeout, err = settings.DurationSetting(config.SocketWriteTimeout); err != nil {
+			var timeoutInt int
+			if timeoutInt, err = settings.IntSetting(config.SocketWriteTimeout); err != nil {
+				return
+			}
+			timeout = time.Duration(timeoutInt) * time.Second
+		}
+
+		if timeout < 0 {
+			err = IncorrectFormatForSetting{Setting: config.SocketWriteTimeout, Value: []byte(timeout.String())}
+			return
+		}
+		s.SocketWriteTimeout = timeout
+	}
+
+	if settings.HasSetting(config.SocketLingerZeroOnClose) {
+		if s.SocketLingerZeroOnClose, err = settings.BoolSetting(config.SocketLingerZeroOnClose); err != nil {
+			return
+		}
+	}
+
 	if f.BuildInitiators {
 		if err = f.buildInitiatorSettings(s, settings); err != nil {
 			return

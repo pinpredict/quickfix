@@ -187,7 +187,16 @@ func (i *Initiator) handleConnection(session *session, tlsConfig *tls.Config, di
 		if err != nil {
 			session.log.OnEventf("Failed to connect: %v", err)
 			goto reconnect
-		} else if tlsConfig != nil {
+		}
+
+		// Armed before anything is sent: a write timeout can close the connection at any point after.
+		if session.SocketLingerZeroOnClose {
+			if err := setLingerZero(netConn); err != nil {
+				session.log.OnEventf("Failed to set linger: %v", err)
+			}
+		}
+
+		if tlsConfig != nil {
 			// Unless InsecureSkipVerify is true, server name config is required for TLS
 			// to verify the received certificate
 			if !tlsConfig.InsecureSkipVerify && len(tlsConfig.ServerName) == 0 {
@@ -215,7 +224,7 @@ func (i *Initiator) handleConnection(session *session, tlsConfig *tls.Config, di
 		go readLoop(newParser(bufio.NewReader(netConn)), msgIn, session.log)
 		disconnected = make(chan interface{})
 		go func() {
-			writeLoop(netConn, msgOut, session.log)
+			writeLoop(connWriter(netConn, session.SocketWriteTimeout, session.log), msgOut, session.log)
 			if err := netConn.Close(); err != nil {
 				session.log.OnEvent(err.Error())
 			}

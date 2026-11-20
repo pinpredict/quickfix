@@ -612,6 +612,42 @@ const (
 	//  - A valid go time.Duration
 	SocketTimeout string = "SocketTimeout"
 
+	// SocketWriteTimeout bounds each write of an outbound message to the socket. When a write does not
+	// complete within it (the counterparty has stopped reading and the socket's send buffer is full), the
+	// connection is closed: the session sees a disconnect, and every sender blocked behind the stalled write,
+	// including the session's own admin messages, is released. Without it a write to a peer that has stopped
+	// reading blocks indefinitely, and so does every send queued behind it.
+	// Matches the intent of QuickFIX/n's SocketSendTimeout.
+	// Used for initiators and acceptors.
+	//
+	// Example Values:
+	//  - SocketWriteTimeout=5s # 5 seconds
+	//
+	// Required: No
+	//
+	// Default: 0 (no timeout)
+	//
+	// Valid Values:
+	//  - A valid go time.Duration, or a non-negative integer number of seconds
+	SocketWriteTimeout string = "SocketWriteTimeout"
+
+	// SocketLingerZeroOnClose if set to Y, the TCP connection is set to linger 0 (SO_LINGER on, timeout 0),
+	// so closing it sends a TCP RST and discards any unsent data instead of a FIN behind the unsent queue.
+	// The counterparty learns the connection is gone at once, rather than after it has drained whatever
+	// was queued, which matters when it acts on the disconnect (e.g. Cancel-on-Disconnect).
+	// It is applied as soon as the connection is established, before any message is sent, and to the TCP
+	// connection under TLS. A connection that is not TCP (e.g. a custom proxy dialer's) is logged and left as is.
+	// Used for initiators and acceptors.
+	//
+	// Required: No
+	//
+	// Default: N
+	//
+	// Valid Values:
+	//  - Y
+	//  - N
+	SocketLingerZeroOnClose string = "SocketLingerZeroOnClose"
+
 	// ProxyType sets the type of proxy server to connect to.
 	// Only used for initiators.
 	//

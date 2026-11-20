@@ -65,6 +65,8 @@ func (s *SessionFactorySuite) TestDefaults() {
 	s.False(session.EnableLastMsgSeqNumProcessed)
 	s.False(session.SkipCheckLatency)
 	s.False(session.SkipOrigSendingTimeOnSequenceReset)
+	s.Zero(session.SocketWriteTimeout)
+	s.False(session.SocketLingerZeroOnClose)
 	s.Equal(Millis, session.timestampPrecision)
 	s.Equal(120*time.Second, session.MaxLatency)
 	s.False(session.DisableMessagePersist)
@@ -200,6 +202,52 @@ func (s *SessionFactorySuite) TestRequiresOrigSendingTime() {
 
 		s.Equal(test.expected, session.SkipOrigSendingTimeOnSequenceReset)
 	}
+}
+
+func (s *SessionFactorySuite) TestSocketWriteTimeout() {
+	var tests = []struct {
+		setting  string
+		expected time.Duration
+	}{{"5s", 5 * time.Second}, {"250ms", 250 * time.Millisecond}, {"5", 5 * time.Second}, {"0", 0}}
+
+	for _, test := range tests {
+		s.SetupTest()
+		s.SessionSettings.Set(config.SocketWriteTimeout, test.setting)
+		session, err := s.newSession(s.SessionID, s.MessageStoreFactory, s.SessionSettings, s.LogFactory, s.App)
+		s.Nil(err)
+		s.NotNil(session)
+
+		s.Equal(test.expected, session.SocketWriteTimeout)
+	}
+
+	for _, invalid := range []string{"-1s", "-1", "soon"} {
+		s.SetupTest()
+		s.SessionSettings.Set(config.SocketWriteTimeout, invalid)
+		_, err := s.newSession(s.SessionID, s.MessageStoreFactory, s.SessionSettings, s.LogFactory, s.App)
+		s.NotNil(err, invalid)
+	}
+}
+
+func (s *SessionFactorySuite) TestSocketLingerZeroOnClose() {
+	var tests = []struct {
+		setting  string
+		expected bool
+	}{{"Y", true}, {"N", false}}
+
+	for _, test := range tests {
+		s.SetupTest()
+		s.SessionSettings.Set(config.SocketLingerZeroOnClose, test.setting)
+		session, err := s.newSession(s.SessionID, s.MessageStoreFactory, s.SessionSettings, s.LogFactory, s.App)
+		s.Nil(err)
+		s.NotNil(session)
+
+		s.Equal(test.expected, session.SocketLingerZeroOnClose)
+	}
+
+	s.SetupTest()
+	s.SessionSettings.Set(config.SocketLingerZeroOnClose, "maybe")
+	_, err := s.newSession(s.SessionID, s.MessageStoreFactory, s.SessionSettings, s.LogFactory, s.App)
+	s.NotNil(err)
 }
 
 func (s *SessionFactorySuite) TestStartAndEndTime() {

@@ -26,6 +26,12 @@ type SessionSettings struct {
 	// SkipOrigSendingTimeOnSequenceReset is the inverse of the RequiresOrigSendingTime setting.
 	SkipOrigSendingTimeOnSequenceReset bool
 
+	// SocketWriteTimeout bounds each socket write; zero means no bound.
+	SocketWriteTimeout time.Duration
+
+	// SocketLingerZeroOnClose makes closing the connection send a TCP RST.
+	SocketLingerZeroOnClose bool
+
 	// Required on logon for FIX.T.1 messages.
 	DefaultApplVerID string
 
